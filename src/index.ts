@@ -66,6 +66,76 @@ server.tool(
 );
 
 server.tool(
+  "attach_by_url",
+  "按 URL 或标题关键词查找页面并直接开始监听，替代 list_pages + attach_to_page 两步操作",
+  {
+    urlPattern: z.string().describe("URL 或页面标题的关键词，如 'localhost:3000' 或 '我的应用'"),
+  },
+  async ({ urlPattern }) => {
+    try {
+      const page = await manager.attachByUrl(urlPattern);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `已连接到页面：\n  id: ${page.id}\n  标题: ${page.title}\n  URL: ${page.url}\n\n控制台日志开始捕获。`,
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: String(err) }],
+      };
+    }
+  }
+);
+
+server.tool(
+  "reload_and_check",
+  "刷新指定页面并等待加载完成，返回刷新后是否还有控制台报错，用于验证 bug 是否修复",
+  {
+    targetId: z.string().describe("页面的 CDP target ID"),
+    waitMs: z
+      .number()
+      .int()
+      .min(0)
+      .max(10000)
+      .default(2000)
+      .describe("页面 load 事件触发后额外等待的毫秒数，用于捕获异步报错，默认 2000"),
+  },
+  async ({ targetId, waitMs }) => {
+    try {
+      const { errors, hasErrors } = await manager.reloadAndCheck(targetId, waitMs);
+      if (!hasErrors) {
+        return {
+          content: [{ type: "text", text: "✓ 页面刷新完成，未发现控制台报错。bug 已修复。" }],
+        };
+      }
+      const text = errors
+        .map((entry) => {
+          const time = new Date(entry.timestamp).toISOString().slice(11, 23);
+          const location =
+            entry.url ? ` (${entry.url}${entry.lineNumber != null ? `:${entry.lineNumber}` : ""})` : "";
+          return `[${time}] [ERROR] ${entry.text}${location}`;
+        })
+        .join("\n");
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✗ 页面刷新后仍有 ${errors.length} 条报错：\n\n${text}`,
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `执行失败: ${String(err)}` }],
+      };
+    }
+  }
+);
+
+server.tool(
   "detach_from_page",
   "停止监听指定页面的控制台事件（已捕获的日志仍然保留）",
   { targetId: z.string() },

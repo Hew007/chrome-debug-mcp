@@ -75,6 +75,44 @@ export class ChromeManager {
     this.clients.set(targetId, client);
   }
 
+  async attachByUrl(urlPattern: string): Promise<PageInfo> {
+    const pages = await this.listPages();
+    const matched = pages.find(
+      (p) => p.url.includes(urlPattern) || p.title.includes(urlPattern)
+    );
+    if (!matched) {
+      throw new Error(
+        `未找到匹配 "${urlPattern}" 的页面。当前页面：\n${pages.map((p) => `  ${p.url}`).join("\n")}`
+      );
+    }
+    await this.attachToPage(matched.id);
+    return matched;
+  }
+
+  async reloadAndCheck(
+    targetId: string,
+    waitMs = 2000
+  ): Promise<{ errors: LogEntry[]; hasErrors: boolean }> {
+    const client = this.clients.get(targetId);
+    if (!client) throw new Error("未连接到该页面，请先调用 attach_to_page 或 attach_by_url。");
+
+    this.clearConsoleLogs(targetId);
+
+    await client.Page.enable();
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(), waitMs + 3000);
+      client.Page.loadEventFired(() => {
+        clearTimeout(timer);
+        setTimeout(resolve, waitMs);
+      });
+      client.Page.reload({}).catch(reject);
+    });
+
+    const errors = this.getConsoleLogs(targetId, "error", 500);
+    return { errors, hasErrors: errors.length > 0 };
+  }
+
   async detachFromPage(targetId: string): Promise<void> {
     const client = this.clients.get(targetId);
     if (!client) return;
