@@ -1,7 +1,18 @@
 {
   "name": "chrome-mcp-debug",
   "version": "1.0.0",
+  "description": "MCP server for debugging Chrome via CDP — captures console logs, evaluates JS, and verifies bug fixes by reloading pages",
   "type": "module",
+  "license": "MIT",
+  "author": "hew-f",
+  "keywords": [
+    "mcp",
+    "chrome",
+    "cdp",
+    "debugging",
+    "claude",
+    "model-context-protocol"
+  ],
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts"

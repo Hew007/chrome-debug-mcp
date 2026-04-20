@@ -61,6 +61,13 @@ typings/
 # local files
 .idea/
 .DS_store
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# Internal docs
+docs/
 
 # history
 .history/
